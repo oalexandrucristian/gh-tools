@@ -28,7 +28,7 @@ def inspect_workflow(path: Path):
 
     for job in data.get("jobs", {}).values():
         uses = job.get("uses")
-        if isinstance(uses, str) and "/" in uses and "@” in uses:
+        if isinstance(uses, str) and "/" in uses and "@" in uses:
             external_reusables.append(uses)
 
     return {
