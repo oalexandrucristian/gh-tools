@@ -3,6 +3,11 @@ run-name: "Meta • Inspector • ${{ github.event_name }} • ${{ github.ref_na
 
 on:
   workflow_dispatch:
+    inputs:
+      debug_full:
+        description: "Print full GitHub context (very verbose)"
+        required: false
+        default: "true"
   pull_request:
 
 permissions:
@@ -14,6 +19,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Debug (FULL) - dump contexts
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_full == 'true' }}
+        shell: bash
+        run: |
+          echo "==== github context ===="
+          echo '${{ toJson(github) }}'
+          echo
+          echo "==== runner context ===="
+          echo '${{ toJson(runner) }}'
+          echo
+          echo "==== job context ===="
+          echo '${{ toJson(job) }}'
+          echo
+          echo "==== env context ===="
+          echo '${{ toJson(env) }}'
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -29,7 +49,7 @@ jobs:
 
       - name: Run workflow inspector
         run: |
-          python wfff_inspector.py
+          python wf-inspector.py
 
       - name: Add run summary
         if: always()
