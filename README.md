@@ -32,4 +32,4 @@ The workflow is triggered automatically on pull requests that modify:
 
 ```yaml
 .github/workflows/**
-scripts/workflow_inspector.py
+wf-inspector.py
