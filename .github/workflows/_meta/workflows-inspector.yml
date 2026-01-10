@@ -1,0 +1,44 @@
+name: Meta / Workflow Inspector
+run-name: "Meta • Inspector • ${{ github.event_name }} • ${{ github.ref_name }}"
+
+on:
+  pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-workflows:
+    name: Inspect GitHub Workflows
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Run workflow inspector
+        run: |
+          python workflow_inspector.py
+
+      - name: Add run summary
+        if: always()
+        run: |
+          {
+            echo "## Workflow Inspector"
+            echo ""
+            echo "- **Event:** \`${{ github.event_name }}\`"
+            echo "- **Ref:** \`${{ github.ref }}\`"
+            echo "- **Actor:** \`${{ github.actor }}\`"
+            echo ""
+            echo "Inspector script executed successfully."
+          } >> "$GITHUB_STEP_SUMMARY"
