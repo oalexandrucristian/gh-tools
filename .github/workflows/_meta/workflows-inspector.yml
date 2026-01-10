@@ -2,7 +2,9 @@ name: Meta / Workflow Inspector
 run-name: "Meta • Inspector • ${{ github.event_name }} • ${{ github.ref_name }}"
 
 on:
-  pull_request
+  pull_request:
+    paths:
+      - ".github/workflows/**"
 
 permissions:
   contents: read
