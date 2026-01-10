@@ -29,7 +29,7 @@ jobs:
 
       - name: Run workflow inspector
         run: |
-          python workflow_inspector.py
+          python wf_inspector.py
 
       - name: Add run summary
         if: always()
