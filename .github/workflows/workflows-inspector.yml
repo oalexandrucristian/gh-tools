@@ -19,6 +19,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Metadata
+        run: |
+          echo "::notice::Triggered by event: ${{ github.event_name }}"
+          echo "::notice::Ref: ${{ github.ref }}"
+          echo "::notice::Actor: ${{ github.actor }}"
+          
       - name: Debug (FULL) - dump contexts
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_full == 'true' }}
         shell: bash
