@@ -1,63 +1,57 @@
-import yaml
 from pathlib import Path
+import yaml
+import sys
 
 WORKFLOWS_DIR = Path(".github/workflows")
+REPORTS_DIR = Path("reports")
+REPORTS_DIR.mkdir(exist_ok=True)
 
-def load_yaml(path: Path):
-    with path.open() as f:
-        return yaml.safe_load(f)
+errors = []
+warnings = []
 
-def extract_on(on_field):
-    if isinstance(on_field, dict):
-        return list(on_field.keys())
-    if isinstance(on_field, list):
-        return on_field
-    if isinstance(on_field, str):
-        return [on_field]
-    return []
+def annotate(level, file, line, message):
+    print(f"::{level} file={file},line={line}::{message}")
 
 def inspect_workflow(path: Path):
-    data = load_yaml(path)
+    with path.open() as f:
+        data = yaml.safe_load(f) or {}
 
-    name = data.get("name", path.name)
-    events = extract_on(data.get("on"))
-    permissions = "permissions" in data
-    concurrency = "concurrency" in data
+    # Rule: permissions required
+    if "permissions" not in data:
+        errors.append((path, 1, "Missing top-level 'permissions' block"))
+        annotate("error", path, 1, "Missing top-level 'permissions' block")
 
-    external_reusables = []
-
+    # Rule: external reusable workflow pinned to main
     for job in data.get("jobs", {}).values():
         uses = job.get("uses")
-        if isinstance(uses, str) and "/" in uses and "@" in uses:
-            external_reusables.append(uses)
+        if isinstance(uses, str) and "@main" in uses:
+            warnings.append((path, 1, f"External reusable workflow pinned to @main: {uses}"))
+            annotate("warning", path, 1, f"External reusable workflow pinned to @main")
 
-    return {
-        "file": str(path),
-        "name": name,
-        "events": events,
-        "permissions": permissions,
-        "concurrency": concurrency,
-        "external_reusables": external_reusables,
-    }
+# Scan
+workflows = list(WORKFLOWS_DIR.glob("*.yml"))
+for wf in workflows:
+    inspect_workflow(wf)
 
-def main():
-    workflows = WORKFLOWS_DIR.rglob("*.yml")
+# --- Write Job Summary ---
+summary = REPORTS_DIR / "summary.md"
+with summary.open("w") as f:
+    f.write("# Workflow Inspector Report\n\n")
+    f.write(f"✔ **{len(workflows)} workflows scanned**\n")
+    f.write(f"⚠ **{len(warnings)} warnings**\n")
+    f.write(f"❌ **{len(errors)} errors**\n\n")
 
-    print("Workflow inventory\n")
+    if errors:
+        f.write("## Errors\n")
+        for file, _, msg in errors:
+            f.write(f"- `{file}` — {msg}\n")
+        f.write("\n")
 
-    for wf in workflows:
-        info = inspect_workflow(wf)
-        print(f"- {info['name']}")
-        print(f"  file: {info['file']}")
-        print(f"  events: {', '.join(info['events']) or 'UNKNOWN'}")
-        print(f"  permissions declared: {info['permissions']}")
-        print(f"  concurrency declared: {info['concurrency']}")
+    if warnings:
+        f.write("## Warnings\n")
+        for file, _, msg in warnings:
+            f.write(f"- `{file}` — {msg}\n")
 
-        if info["external_reusables"]:
-            print("  external reusable workflows:")
-            for r in info["external_reusables"]:
-                print(f"    - {r}")
-        print()
-
-if __name__ == "__main__":
-    main()
+# Exit code → BLOCK PR
+if errors:
+    sys.exit(1)
