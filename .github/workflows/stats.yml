@@ -1,0 +1,56 @@
+name: Get Workflow Runs via API
+
+# Permite declanșarea manuală a acestui workflow din tab-ul "Actions"
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_file_name:
+        description: 'The name of the workflow file to query (e.g., "ci.yaml")'
+        required: true
+        default: 'get_workflow_runs.yaml' # Ca exemplu, se auto-interoghează
+      limit:
+        description: 'Number of recent runs to fetch'
+        required: true
+        type: number
+        default: 5
+
+jobs:
+  fetch-runs:
+    name: Fetch and Display Workflow Runs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fetch workflow runs using curl and jq
+        env:
+          # Pasează token-ul GitHub într-un mod securizat ca variabilă de mediu
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Fetching the last ${{ github.event.inputs.limit }} runs for workflow: ${{ github.event.inputs.workflow_file_name }}"
+          echo "---"
+
+          # Comanda `curl` apelează API-ul GitHub
+          # Răspunsul JSON este trimis direct către `jq` pentru procesare
+          curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/${{ github.event.inputs.workflow_file_name }}/runs?per_page=${{ github.event.inputs.limit }}" | \
+          jq '
+            # API-ul returnează un obiect; noi extragem array-ul "workflow_runs"
+            .workflow_runs |
+
+            # `map` creează un nou array prin transformarea fiecărui element
+            map({
+              # Cheia din stânga este ce vrem în output,
+              # valoarea din dreapta este ce extragem din răspunsul API.
+              status: .status,
+              conclusion: .conclusion,
+              headBranch: .head_branch,
+              displayTitle: .display_title,
+              createdAt: .created_at,
+              url: .html_url
+            })
+          '
