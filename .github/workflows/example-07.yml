@@ -1,0 +1,7 @@
+name: Dummy Workflow 07
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'Dummy 07'
